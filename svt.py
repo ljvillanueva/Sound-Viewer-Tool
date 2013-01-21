@@ -1,7 +1,8 @@
 #!/usr/bin/env python
  
 # svt.py -- sound visualization tool
-# Copyright (C) 2009 Luis J. Villanueva
+# http://github.com/ljvillanueva/Sound-Viewer-Tool
+# Copyright (C) 2009-2013 Luis J. Villanueva
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -67,7 +68,7 @@ class AudioProcessor(object):
         self.samplerate = audio_file.get_samplerate()
         self.channels = audio_file.get_channels()
         self.spectrum_range = None
-        self.lower = 100
+        self.lower = 10
         self.higher = 22050
         self.lower_log = math.log10(self.lower)
         self.higher_log = math.log10(self.higher)
@@ -385,7 +386,7 @@ class SpectrogramImage(object):
         self.palette = palette
  
         if nyquist_freq<f_max:
-            print "\nWarning: The specified maximum frequency to draw (%d Hz) is higher that what the digital file allows, which is %d Hz. The image file will have black areas on top that correspond to empty data.\n" % (f_max,nyquist_freq)
+            print "\nWarning: The specified maximum frequency to draw (%d Hz) is higher that what the digital file allows, which is %d Hz. The image file will have blank areas on top that correspond to empty data.\n" % (f_max,nyquist_freq)
 
         if palette==2:
 	        colors = [
@@ -563,5 +564,5 @@ if __name__ == '__main__':
  
 	    create_png(*args)
     else:
-        print "\n svt version 0.4"
+        print "\n svt version 0.41"
 
