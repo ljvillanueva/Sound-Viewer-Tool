@@ -22,6 +22,8 @@
 # Based on wav2png.py by Bram de Jong <bram.dejong at domain.com where domain in gmail>
 # From http://freesound.iua.upf.edu/blog/?p=10
 #
+
+svt_version = "1.0"
  
 import optparse, math, sys
 import scikits.audiolab as audiolab
@@ -57,12 +59,11 @@ class TestAudioFile(object):
         will_read = num_frames_left if num_frames_left < frames_to_read else frames_to_read
         self.seekpoint += will_read
         return numpy.random.random(will_read)*2 - 1 
- 
- 
+
+
 class AudioProcessor(object):
-    def __init__(self, audio_file, fft_size, channel, window_function=numpy.ones):
+    def __init__(self, audio_file, fft_size, channel, window):
         self.fft_size = fft_size
-        self.window = window_function(self.fft_size)
         self.audio_file = audio_file
         self.frames = audio_file.get_nframes()
         self.samplerate = audio_file.get_samplerate()
@@ -74,6 +75,17 @@ class AudioProcessor(object):
         self.higher_log = math.log10(self.higher)
         self.clip = lambda val, low, high: min(high, max(low, val))
         self.channel = channel
+	self.window = window
+	if self.window == "bartlett":
+		self.window = numpy.bartlett(self.fft_size)
+	elif self.window == "blackman":
+		self.window = numpy.blackman(self.fft_size)
+	elif self.window == "hanning":
+		self.window = numpy.hanning(self.fft_size)
+	elif self.window == "hamming":
+		self.window = numpy.hamming(self.fft_size)
+	elif self.window == "kaiser":
+		self.window = numpy.kaiser(self.fft_size)
 
     def read(self, start, size, resize_if_less=False):
         """ read size samples starting at start, if resize_if_less is True and less than size
@@ -487,14 +499,16 @@ class SpectrogramImage(object):
         self.image.transpose(Image.ROTATE_90).save(filename)
  
  
-def create_png(input_filename, output_filename_w, output_filename_s, image_width, image_height, fft_size, f_max, f_min, wavefile, palette, channel):
+def create_png(input_filename, output_filename_w, output_filename_s, image_width, image_height, fft_size, f_max, f_min, wavefile, palette, channel, window):
     print "processing file %s:\n\t" % input_file,
  
     audio_file = audiolab.sndfile(input_filename, 'read')
  
     samples_per_pixel = audio_file.get_nframes() / float(image_width)
     nyquist_freq = (audio_file.get_samplerate() / 2) + 0.0
-    processor = AudioProcessor(audio_file, fft_size, channel, numpy.hanning)
+    numpy_window = window
+#    processor = AudioProcessor(audio_file, fft_size, channel, numpy.hanning)
+    processor = AudioProcessor(audio_file, fft_size, channel, numpy_window)
  
     if wavefile==1:
         waveform = WaveformImage(image_width, image_height, palette)
@@ -532,13 +546,14 @@ if __name__ == '__main__':
     parser.add_option("-w", "--width", action="store", dest="image_width", type="int", help="image width in pixels (default %default)")
     parser.add_option("-h", "--height", action="store", dest="image_height", type="int", help="image height in pixels (default %default)")
     parser.add_option("-f", "--fft", action="store", dest="fft_size", type="int", help="fft size, power of 2 for increased performance (default %default)")
+    parser.add_option("-n", "--window", action="store", dest="window", type="string", help="window to use for the FFT: bartlett, blackman, hanning, hamming, or kaiser (default %default)")
     parser.add_option("-m", "--fmax", action="store", dest="f_max", type="int", help="Maximum freq to draw, in Hz (default %default)")
     parser.add_option("-i", "--fmin", action="store", dest="f_min", type="int", help="Minimum freq to draw, in Hz (default %default)")
-    parser.add_option("-p", "--palette", action="store", dest="palette", type="int", help="Which color palette to use to draw the spectrogram, 1 for color and 2 for black on white (default %default)")
+    parser.add_option("-p", "--palette", action="store", dest="palette", type="int", help="Which color palette to use to draw the spectrogram, 1 for black background and 2 for white background (default %default)")
     parser.add_option("-c", "--channel", action="store", dest="channel", type="int", help="Which channel to draw in a stereo file, 1 for left or 2 for right (default %default)")
     parser.add_option("-v", "--version", action="store_true", dest="version", help="display version information")
  
-    parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=500, image_height=170, fft_size=2048, f_max=22050, f_min=10, wavefile=0, palette=1, channel=1)
+    parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=500, image_height=170, fft_size=2048, f_max=22050, f_min=10, wavefile=0, palette=1, channel=1, window="hanning")
  
     (options, args) = parser.parse_args()
  
@@ -559,10 +574,10 @@ if __name__ == '__main__':
 	            output_file_w = options.output_filename_w or input_file + "_w.png"
 	            output_file_s = options.output_filename_s or input_file + "_s.png"
  
-	        args = (input_file, output_file_w, output_file_s, options.image_width, options.image_height, options.fft_size, options.f_max, options.f_min, options.wavefile, options.palette, options.channel)
+	        args = (input_file, output_file_w, output_file_s, options.image_width, options.image_height, options.fft_size, options.f_max, options.f_min, options.wavefile, options.palette, options.channel, options.window)
  
- 
+	    print "\nsvt version " + str(svt_version) + "\n"
 	    create_png(*args)
     else:
-        print "\n svt version 0.41"
+        print "\nsvt version " + str(svt_version) + "\n"
 
