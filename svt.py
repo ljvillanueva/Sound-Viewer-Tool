@@ -23,7 +23,7 @@
 # From http://freesound.iua.upf.edu/blog/?p=10
 #
 
-svt_version = "1.0"
+svt_version = "1.1"
  
 import optparse, math, sys
 import scikits.audiolab as audiolab
@@ -386,7 +386,7 @@ class WaveformImage(object):
  
  
 class SpectrogramImage(object):
-    def __init__(self, image_width, image_height, fft_size, f_max, f_min, nyquist_freq, palette):
+    def __init__(self, image_width, image_height, fft_size, f_max, f_min, nyquist_freq, palette, logspec):
         self.image = Image.new("P", (image_height, image_width))
  
         self.image_width = image_width
@@ -396,6 +396,7 @@ class SpectrogramImage(object):
         self.f_min = f_min
         self.nyquist_freq = nyquist_freq
         self.palette = palette
+        self.logspec = logspec
  
         if nyquist_freq<f_max:
             print "\nWarning: The specified maximum frequency to draw (%d Hz) is higher that what the digital file allows, which is %d Hz. The image file will have blank areas on top that correspond to empty data.\n" % (f_max,nyquist_freq)
@@ -469,13 +470,17 @@ class SpectrogramImage(object):
         y_min = math.log10(f_min)
         y_max = math.log10(f_max)
         for y in range(self.image_height):
-#            log scale
-#            freq = math.pow(10.0, y_min + y / (image_height - 1.0) *(y_max - y_min))
-#            arithmetic scale
-            freq = f_min + y / (image_height - 1.0) *(f_max - f_min)
-#            uses the nyquist frequency to allow files of different sampling rate
+
+
+            if logspec==1:
+            	#log scale
+            	freq = math.pow(10.0, y_min + y / (image_height - 1.0) *(y_max - y_min))
+            else:
+            	#arithmetic scale
+            	freq = f_min + y / (image_height - 1.0) *(f_max - f_min)
+            #uses the nyquist frequency to allow files of different sampling rate
             bin = freq / nyquist_freq * (self.fft_size/2 + 1)
-#            bin = freq / 22050.0 * (self.fft_size/2 + 1)
+            #bin = freq / 22050.0 * (self.fft_size/2 + 1)
  
             if bin < self.fft_size/2:
                 alpha = bin - int(bin)
@@ -499,7 +504,7 @@ class SpectrogramImage(object):
         self.image.transpose(Image.ROTATE_90).save(filename)
  
  
-def create_png(input_filename, output_filename_w, output_filename_s, image_width, image_height, fft_size, f_max, f_min, wavefile, palette, channel, window):
+def create_png(input_filename, output_filename_w, output_filename_s, image_width, image_height, fft_size, f_max, f_min, wavefile, palette, channel, window, logspec):
     print "processing file %s:\n\t" % input_file,
  
     audio_file = audiolab.sndfile(input_filename, 'read')
@@ -512,7 +517,7 @@ def create_png(input_filename, output_filename_w, output_filename_s, image_width
  
     if wavefile==1:
         waveform = WaveformImage(image_width, image_height, palette)
-    spectrogram = SpectrogramImage(image_width, image_height, fft_size, f_max, f_min, nyquist_freq, palette)
+    spectrogram = SpectrogramImage(image_width, image_height, fft_size, f_max, f_min, nyquist_freq, palette, logspec)
  
     for x in range(image_width):
  
@@ -551,9 +556,10 @@ if __name__ == '__main__':
     parser.add_option("-i", "--fmin", action="store", dest="f_min", type="int", help="Minimum freq to draw, in Hz (default %default)")
     parser.add_option("-p", "--palette", action="store", dest="palette", type="int", help="Which color palette to use to draw the spectrogram, 1 for black background and 2 for white background (default %default)")
     parser.add_option("-c", "--channel", action="store", dest="channel", type="int", help="Which channel to draw in a stereo file, 1 for left or 2 for right (default %default)")
-    parser.add_option("-v", "--version", action="store_true", dest="version", help="display version information")
+    parser.add_option("-l", "--log", action="store_true", dest="logspec", help="Draw the spectrogram in log scale, 0 for no (arithmetic) or 1 for log scale")
+    parser.add_option("-v", "--version", action="store_true", dest="version", help="Display version information")
  
-    parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=500, image_height=170, fft_size=2048, f_max=22050, f_min=10, wavefile=0, palette=1, channel=1, window="hanning")
+    parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=500, image_height=170, fft_size=2048, f_max=22050, f_min=10, wavefile=0, palette=1, channel=1, window="hanning", logspec=0)
  
     (options, args) = parser.parse_args()
  
@@ -574,7 +580,7 @@ if __name__ == '__main__':
 	            output_file_w = options.output_filename_w or input_file + "_w.png"
 	            output_file_s = options.output_filename_s or input_file + "_s.png"
  
-	        args = (input_file, output_file_w, output_file_s, options.image_width, options.image_height, options.fft_size, options.f_max, options.f_min, options.wavefile, options.palette, options.channel, options.window)
+	        args = (input_file, output_file_w, output_file_s, options.image_width, options.image_height, options.fft_size, options.f_max, options.f_min, options.wavefile, options.palette, options.channel, options.window, options.logspec)
  
 	    print "\nsvt version " + str(svt_version) + "\n"
 	    create_png(*args)
